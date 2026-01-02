@@ -1,0 +1,12 @@
+
+---
+
+**File 4: . gitignore**
+
+```text
+__pycache__/
+*.pyc
+. env
+.DS_Store
+*.log
+flagged/
