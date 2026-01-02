@@ -133,13 +133,5 @@ with gr. Blocks(title="Wildfire Detection API") as demo:
         )
         ```
         """)
-    
-    # API endpoint
-    gr.Interface(
-        fn=detect_fire_api,
-        inputs=gr.Image(type="pil"),
-        outputs="text",
-        api_name="detect_fire_api"
-    )
-
+        
 demo.launch()
