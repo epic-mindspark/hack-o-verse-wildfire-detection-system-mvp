@@ -31,7 +31,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    if st.button("🔄 Refresh Data", use_container_width=True):
+    if st.button("🔄 Refresh Data", width="stretch"):
         st.cache_data.clear()
         st.rerun()
     
@@ -172,7 +172,7 @@ with list_col:
 """)
                 
                 if inc.get("annotated_url"):
-                    st.image(inc["annotated_url"], caption="Detection Result", use_container_width=True)
+                    st.image(inc["annotated_url"], caption="Detection Result", width="stretch")
     else:
         st.info("No incidents match the current filters")
 
@@ -209,7 +209,7 @@ with chart_col1:
             hole=0.4
         )
         fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=300)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("No data for severity chart")
 
@@ -235,7 +235,7 @@ with chart_col2:
                     xaxis_title="Date",
                     yaxis_title="Incidents"
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
             else:
                 st.info("Not enough data for timeline")
         else:
@@ -280,12 +280,12 @@ if filtered_incidents:
     with img_col1:
         if latest.get("original_url"):
             st.markdown("#### 📷 Original Image")
-            st.image(latest["original_url"], use_container_width=True)
+            st.image(latest["original_url"], width="stretch")
     
     with img_col2:
         if latest.get("annotated_url"):
             st.markdown("#### 🎯 Detection Result")
-            st.image(latest["annotated_url"], use_container_width=True)
+            st.image(latest["annotated_url"], width="stretch")
     
     # Full Analysis
     st.markdown("#### 📝 Full Analysis")
