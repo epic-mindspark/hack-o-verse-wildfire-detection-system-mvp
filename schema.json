@@ -1,0 +1,66 @@
+{
+  "incidents": {
+    "_placeholder": {
+      "id": "_placeholder",
+      "timestamp": 0,
+      "device_id": "system",
+      "location": {
+        "latitude": 0,
+        "longitude": 0
+      },
+      "sensors": {
+        "temperature": 0,
+        "humidity": 0,
+        "gas_level": 0,
+        "flame_detected": false
+      },
+      "detection": {
+        "fire_detected": false,
+        "smoke_detected": false,
+        "confidence": 0,
+        "detections": []
+      },
+      "analysis": {
+        "severity": "NONE",
+        "summary": "Placeholder entry - do not delete",
+        "action": "None"
+      },
+      "images": {
+        "original_url": "",
+        "annotated_url": ""
+      },
+      "status": "placeholder"
+    }
+  },
+  "devices": {
+    "demo-upload": {
+      "name": "Demo Upload Device",
+      "status": "online",
+      "last_seen": 1704067200000,
+      "location": {
+        "latitude": 18.4636,
+        "longitude": 73.8682
+      }
+    },
+    "esp32-001": {
+      "name": "ESP32 Forest Sensor",
+      "status": "offline",
+      "last_seen": 1704067200000,
+      "location": {
+        "latitude": 18.4636,
+        "longitude": 73.8682
+      },
+      "battery_percent": 85,
+      "solar_charging": true,
+      "signal_strength": -65
+    }
+  },
+  "stats": {
+    "total_incidents": 0,
+    "critical_count": 0,
+    "high_count": 0,
+    "medium_count": 0,
+    "low_count": 0,
+    "last_detection": null
+  }
+}
