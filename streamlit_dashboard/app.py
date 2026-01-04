@@ -2,7 +2,7 @@
 🔥 Wildfire Detection Dashboard - Main Page
 """
 import streamlit as st
-from utils import init_firebase, get_incidents, get_stats, get_devices
+from utils.firebase_client import init_firebase, get_incidents, get_stats, get_devices
 from utils.helpers import get_severity_emoji, format_timestamp
 import pandas as pd
 import plotly.express as px
