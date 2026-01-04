@@ -3,11 +3,11 @@
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 from utils.firebase_client import init_firebase, get_incidents, get_stats, get_devices
-from utils.helpers import format_timestamp, get_severity_emoji, get_severity_color, format_value
+from utils.helpers import format_timestamp, get_severity_emoji, get_severity_color, format_value, get_current_time_ist
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 
 # ============ PAGE CONFIG ============
@@ -99,108 +99,130 @@ if status_filter == "Confirmed":
 elif status_filter == "False Alarm":
     filtered_incidents = [i for i in filtered_incidents if i.get("status") == "false_alarm"]
 
+
 # ============ GOOGLE MAPS FUNCTION ============
-def create_google_map(incidents_list, api_key, height=450):
-    """Create Google Map with incident markers"""
+def create_google_map_html(incidents_list, api_key):
+    """Create Google Map HTML with markers"""
     
-    # Filter incidents with valid coordinates
-    valid_incidents = [i for i in incidents_list if i.get("latitude", 0) != 0 and i.get("longitude", 0) != 0]
+    # Filter valid incidents
+    valid_incidents = [
+        i for i in incidents_list 
+        if i.get("latitude", 0) != 0 and i.get("longitude", 0) != 0
+    ]
     
     if not valid_incidents:
         return None
     
-    # Center map on first incident or default location
-    center_lat = valid_incidents[0]["latitude"] if valid_incidents else 18.4636
-    center_lng = valid_incidents[0]["longitude"] if valid_incidents else 73.8682
+    # Center on first incident
+    center_lat = valid_incidents[0]["latitude"]
+    center_lng = valid_incidents[0]["longitude"]
     
-    # Marker colors based on severity
-    severity_colors = {
-        "CRITICAL": "red",
-        "HIGH": "orange", 
-        "MEDIUM": "yellow",
-        "LOW": "green"
-    }
-    
-    # Create markers JavaScript
+    # Build markers
     markers_js = ""
     for inc in valid_incidents:
         lat = inc.get("latitude", 0)
         lng = inc.get("longitude", 0)
         severity = inc.get("severity", "UNKNOWN")
-        color = severity_colors.get(severity, "blue")
         device = inc.get("device_id", "Unknown")
-        time = format_timestamp(inc.get("timestamp"))
         status = inc.get("status", "unknown").replace("_", " ").title()
+        time_str = format_timestamp(inc.get("timestamp"))
         
-        # Icon URL based on severity
-        icon_url = f"http://maps.google.com/mapfiles/ms/icons/{color}-dot.png"
+        # Marker colors
+        color_map = {
+            "CRITICAL": "red",
+            "HIGH": "orange",
+            "MEDIUM": "yellow",
+            "LOW": "green"
+        }
+        color = color_map.get(severity, "blue")
         
         markers_js += f"""
-        new google.maps.Marker({{
-            position: {{ lat: {lat}, lng: {lng} }},
-            map: map,
-            icon: "{icon_url}",
-            title: "{severity} - {device}"
-        }}).addListener('click', function() {{
-            new google.maps.InfoWindow({{
-                content: `
-                    <div style="font-family: Arial; padding: 5px;">
-                        <h3 style="color: {color}; margin: 0 0 10px 0;">🔥 {severity} Alert</h3>
-                        <p><b>Device:</b> {device}</p>
-                        <p><b>Time:</b> {time}</p>
-                        <p><b>Status:</b> {status}</p>
-                        <p><b>Location:</b> {lat:.4f}°N, {lng:.4f}°E</p>
-                    </div>
-                `
-            }}).open(map, this);
-        }});
+            var marker_{lat}_{lng} = new google.maps.Marker({{
+                position: {{lat: {lat}, lng: {lng}}},
+                map: map,
+                icon: "https://maps.google.com/mapfiles/ms/icons/{color}-dot.png",
+                title: "{severity}"
+            }});
+            
+            var info_{lat}_{lng} = new google.maps.InfoWindow({{
+                content: '<div style="padding: 10px;max-width:250px;">' +
+                    '<h3 style="margin:0 0 10px 0;color:{color};">🔥 {severity}</h3>' +
+                    '<p style="margin:5px 0;"><b>Device:</b> {device}</p>' +
+                    '<p style="margin:5px 0;"><b>Time:</b> {time_str}</p>' +
+                    '<p style="margin:5px 0;"><b>Status:</b> {status}</p>' +
+                    '<p style="margin:5px 0;"><b>Location:</b> {lat:.4f}°N, {lng:.4f}°E</p>' +
+                    '</div>'
+            }});
+            
+            marker_{lat}_{lng}.addListener("click", function() {{
+                info_{lat}_{lng}.open(map, marker_{lat}_{lng});
+            }});
         """
     
-    # Complete HTML with Google Maps
     html = f"""
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="utf-8">
         <style>
-            #map {{
-                height: {height}px;
+            html, body, #map {{
+                height: 100%;
                 width: 100%;
-                border-radius: 10px;
+                margin: 0;
+                padding: 0;
+            }}
+            .legend {{
+                background: white;
+                padding: 10px;
+                margin: 10px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+            }}
+            .legend-item {{
+                display: flex;
+                align-items: center;
+                margin: 5px 0;
+            }}
+            .legend-color {{
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                margin-right: 8px;
             }}
         </style>
     </head>
     <body>
         <div id="map"></div>
+        
         <script>
             function initMap() {{
-                const map = new google.maps.Map(document.getElementById("map"), {{
-                    zoom: 12,
-                    center: {{ lat: {center_lat}, lng: {center_lng} }},
+                var map = new google.maps.Map(document.getElementById("map"), {{
+                    zoom: 13,
+                    center: {{lat: {center_lat}, lng: {center_lng}}},
                     mapTypeId: "terrain",
-                    styles: [
-                        {{
-                            featureType: "poi",
-                            elementType: "labels",
-                            stylers: [{{ visibility: "off" }}]
-                        }}
-                    ]
+                    mapTypeControl: true,
+                    streetViewControl: false,
+                    fullscreenControl: true
                 }});
                 
                 {markers_js}
                 
-                // Add legend
-                const legend = document.createElement('div');
-                legend.innerHTML = `
-                    <div style="background: white; padding: 10px; margin: 10px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-                        <b>Severity</b><br>
-                        <span style="color: red;">●</span> Critical<br>
-                        <span style="color: orange;">●</span> High<br>
-                        <span style="color: yellow;">●</span> Medium<br>
-                        <span style="color: green;">●</span> Low
-                    </div>
-                `;
-                map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
+                // Legend
+                var legendDiv = document.createElement("div");
+                legendDiv.className = "legend";
+                legendDiv.innerHTML = 
+                    "<b>Severity</b><br>" +
+                    "<div class='legend-item'><div class='legend-color' style='background: red;'></div>Critical</div>" +
+                    "<div class='legend-item'><div class='legend-color' style='background:orange;'></div>High</div>" +
+                    "<div class='legend-item'><div class='legend-color' style='background:yellow;border: 1px solid #ccc;'></div>Medium</div>" +
+                    "<div class='legend-item'><div class='legend-color' style='background:green;'></div>Low</div>";
+                
+                map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(legendDiv);
             }}
+            
+            window.initMap = initMap;
         </script>
         <script async defer src="https://maps.googleapis.com/maps/api/js?key={api_key}&callback=initMap"></script>
     </body>
@@ -208,28 +230,28 @@ def create_google_map(incidents_list, api_key, height=450):
     """
     return html
 
+
 # ============ MAP & RECENT INCIDENTS ============
 map_col, list_col = st.columns([3, 2])
 
 with map_col:
     st.subheader("🗺️ Incident Map")
     
-    if GOOGLE_MAPS_API_KEY:
-        map_html = create_google_map(filtered_incidents, GOOGLE_MAPS_API_KEY)
-        if map_html:
-            st.components.v1.html(map_html, height=470)
-        else:
-            st.info("📍 No incidents with valid coordinates to display")
+    valid_map_incidents = [
+        i for i in filtered_incidents 
+        if i.get("latitude", 0) != 0 and i.get("longitude", 0) != 0
+    ]
+    
+    if not GOOGLE_MAPS_API_KEY:
+        st.error("⚠️ Google Maps API key not found! Add GOOGLE_MAPS_API_KEY to Streamlit secrets.")
+    elif not valid_map_incidents:
+        st.info("📍 No incidents with valid coordinates to display on map.")
     else:
-        st.warning("⚠️ Google Maps API key not found. Add GOOGLE_MAPS_API_KEY to secrets.")
-        
-        # Fallback to simple map display
-        map_incidents = [i for i in filtered_incidents if i.get("latitude", 0) != 0]
-        if map_incidents:
-            st.markdown("**Incident Locations:**")
-            for inc in map_incidents[:5]:
-                emoji = get_severity_emoji(inc.get("severity", ""))
-                st.write(f"{emoji} {inc.get('latitude', 0):.4f}°N, {inc.get('longitude', 0):.4f}°E - {inc.get('severity', 'Unknown')}")
+        map_html = create_google_map_html(filtered_incidents, GOOGLE_MAPS_API_KEY)
+        if map_html:
+            components.html(map_html, height=450, scrolling=False)
+        else:
+            st.info("📍 No incidents to display on map.")
 
 with list_col:
     st.subheader("📋 Recent Incidents")
@@ -300,34 +322,37 @@ with chart_col1:
         fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=300)
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("No data for chart")
+        st.info("No data for severity chart")
 
 with chart_col2:
     st.markdown("#### Incidents Timeline")
     
     if incidents:
         df = pd.DataFrame(incidents)
-        df["date"] = pd.to_datetime(df["timestamp"], unit="ms").dt.date
-        daily_counts = df.groupby("date").size().reset_index(name="count")
-        
-        if len(daily_counts) > 0:
-            fig = px.bar(
-                daily_counts,
-                x="date",
-                y="count",
-                color_discrete_sequence=["#FF6B35"]
-            )
-            fig.update_layout(
-                margin={"r": 0, "t": 0, "l": 0, "b": 0},
-                height=300,
-                xaxis_title="Date",
-                yaxis_title="Incidents"
-            )
-            st.plotly_chart(fig, use_container_width=True)
+        if "timestamp" in df.columns and len(df) > 0:
+            df["date"] = pd.to_datetime(df["timestamp"], unit="ms").dt.date
+            daily_counts = df.groupby("date").size().reset_index(name="count")
+            
+            if len(daily_counts) > 0:
+                fig = px.bar(
+                    daily_counts,
+                    x="date",
+                    y="count",
+                    color_discrete_sequence=["#FF6B35"]
+                )
+                fig.update_layout(
+                    margin={"r": 0, "t": 0, "l": 0, "b": 0},
+                    height=300,
+                    xaxis_title="Date",
+                    yaxis_title="Incidents"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Not enough data for timeline")
         else:
-            st.info("Not enough data for timeline")
+            st.info("No timestamp data available")
     else:
-        st.info("No data for chart")
+        st.info("No data for timeline chart")
 
 st.markdown("---")
 
@@ -384,10 +409,10 @@ st.markdown("---")
 st.subheader("📡 Device Status")
 
 if devices:
-    device_cols = st.columns(len(devices))
+    device_cols = st.columns(min(len(devices), 4))
     
     for idx, (device_id, device) in enumerate(devices.items()):
-        with device_cols[idx]:
+        with device_cols[idx % 4]:
             status = device.get("status", "unknown")
             status_color = "🟢" if status == "online" else "🔴"
             
@@ -405,4 +430,4 @@ else:
 
 # ============ FOOTER ============
 st.markdown("---")
-st.caption(f"🔥 Wildfire Detection System | Last refreshed: {datetime.now().strftime('%I:%M:%S %p IST')} | GDG Hack-O-Verse MVP")
+st.caption(f"🔥 Wildfire Detection System | Last refreshed: {get_current_time_ist()} | GDG Hack-O-Verse MVP")
