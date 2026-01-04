@@ -18,6 +18,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ============ GOOGLE MAPS API KEY ============
+GOOGLE_MAPS_API_KEY = st.secrets.get("GOOGLE_MAPS_API_KEY", "")
+
 # ============ INIT ============
 init_firebase()
 
@@ -96,67 +99,149 @@ if status_filter == "Confirmed":
 elif status_filter == "False Alarm":
     filtered_incidents = [i for i in filtered_incidents if i.get("status") == "false_alarm"]
 
+# ============ GOOGLE MAPS FUNCTION ============
+def create_google_map(incidents_list, api_key, height=450):
+    """Create Google Map with incident markers"""
+    
+    # Filter incidents with valid coordinates
+    valid_incidents = [i for i in incidents_list if i.get("latitude", 0) != 0 and i.get("longitude", 0) != 0]
+    
+    if not valid_incidents:
+        return None
+    
+    # Center map on first incident or default location
+    center_lat = valid_incidents[0]["latitude"] if valid_incidents else 18.4636
+    center_lng = valid_incidents[0]["longitude"] if valid_incidents else 73.8682
+    
+    # Marker colors based on severity
+    severity_colors = {
+        "CRITICAL": "red",
+        "HIGH": "orange", 
+        "MEDIUM": "yellow",
+        "LOW": "green"
+    }
+    
+    # Create markers JavaScript
+    markers_js = ""
+    for inc in valid_incidents:
+        lat = inc.get("latitude", 0)
+        lng = inc.get("longitude", 0)
+        severity = inc.get("severity", "UNKNOWN")
+        color = severity_colors.get(severity, "blue")
+        device = inc.get("device_id", "Unknown")
+        time = format_timestamp(inc.get("timestamp"))
+        status = inc.get("status", "unknown").replace("_", " ").title()
+        
+        # Icon URL based on severity
+        icon_url = f"http://maps.google.com/mapfiles/ms/icons/{color}-dot.png"
+        
+        markers_js += f"""
+        new google.maps.Marker({{
+            position: {{ lat: {lat}, lng: {lng} }},
+            map: map,
+            icon: "{icon_url}",
+            title: "{severity} - {device}"
+        }}).addListener('click', function() {{
+            new google.maps.InfoWindow({{
+                content: `
+                    <div style="font-family: Arial; padding: 5px;">
+                        <h3 style="color: {color}; margin: 0 0 10px 0;">🔥 {severity} Alert</h3>
+                        <p><b>Device:</b> {device}</p>
+                        <p><b>Time:</b> {time}</p>
+                        <p><b>Status:</b> {status}</p>
+                        <p><b>Location:</b> {lat:.4f}°N, {lng:.4f}°E</p>
+                    </div>
+                `
+            }}).open(map, this);
+        }});
+        """
+    
+    # Complete HTML with Google Maps
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            #map {{
+                height: {height}px;
+                width: 100%;
+                border-radius: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <script>
+            function initMap() {{
+                const map = new google.maps.Map(document.getElementById("map"), {{
+                    zoom: 12,
+                    center: {{ lat: {center_lat}, lng: {center_lng} }},
+                    mapTypeId: "terrain",
+                    styles: [
+                        {{
+                            featureType: "poi",
+                            elementType: "labels",
+                            stylers: [{{ visibility: "off" }}]
+                        }}
+                    ]
+                }});
+                
+                {markers_js}
+                
+                // Add legend
+                const legend = document.createElement('div');
+                legend.innerHTML = `
+                    <div style="background: white; padding: 10px; margin: 10px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+                        <b>Severity</b><br>
+                        <span style="color: red;">●</span> Critical<br>
+                        <span style="color: orange;">●</span> High<br>
+                        <span style="color: yellow;">●</span> Medium<br>
+                        <span style="color: green;">●</span> Low
+                    </div>
+                `;
+                map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
+            }}
+        </script>
+        <script async defer src="https://maps.googleapis.com/maps/api/js?key={api_key}&callback=initMap"></script>
+    </body>
+    </html>
+    """
+    return html
+
 # ============ MAP & RECENT INCIDENTS ============
 map_col, list_col = st.columns([3, 2])
 
 with map_col:
     st.subheader("🗺️ Incident Map")
     
-    # Filter incidents with valid coordinates
-    map_incidents = [i for i in filtered_incidents if i.get("latitude", 0) != 0 and i.get("longitude", 0) != 0]
-    
-    if map_incidents:
-        map_df = pd.DataFrame([
-            {
-                "lat": i["latitude"],
-                "lon": i["longitude"],
-                "severity": i.get("severity", "UNKNOWN"),
-                "device": i.get("device_id", "Unknown"),
-                "time": format_timestamp(i.get("timestamp")),
-                "status": i.get("status", "unknown")
-            }
-            for i in map_incidents
-        ])
-        
-        fig = px.scatter_mapbox(
-            map_df,
-            lat="lat",
-            lon="lon",
-            color="severity",
-            hover_name="device",
-            hover_data=["time", "status"],
-            color_discrete_map={
-                "CRITICAL": "#FF0000",
-                "HIGH": "#FF6600",
-                "MEDIUM": "#FFCC00",
-                "LOW": "#00CC00",
-                "UNKNOWN": "#888888"
-            },
-            zoom=10,
-            height=450,
-            size_max=15
-        )
-        fig.update_layout(
-            mapbox_style="carto-positron",
-            margin={"r": 0, "t": 0, "l": 0, "b": 0}
-        )
-        fig.update_traces(marker=dict(size=15))
-        st.plotly_chart(fig, use_container_width=True)
+    if GOOGLE_MAPS_API_KEY:
+        map_html = create_google_map(filtered_incidents, GOOGLE_MAPS_API_KEY)
+        if map_html:
+            st.components.v1.html(map_html, height=470)
+        else:
+            st.info("📍 No incidents with valid coordinates to display")
     else:
-        st.info("📍 No incidents with valid coordinates to display")
+        st.warning("⚠️ Google Maps API key not found. Add GOOGLE_MAPS_API_KEY to secrets.")
+        
+        # Fallback to simple map display
+        map_incidents = [i for i in filtered_incidents if i.get("latitude", 0) != 0]
+        if map_incidents:
+            st.markdown("**Incident Locations:**")
+            for inc in map_incidents[:5]:
+                emoji = get_severity_emoji(inc.get("severity", ""))
+                st.write(f"{emoji} {inc.get('latitude', 0):.4f}°N, {inc.get('longitude', 0):.4f}°E - {inc.get('severity', 'Unknown')}")
 
 with list_col:
     st.subheader("📋 Recent Incidents")
     
     if filtered_incidents:
-        for inc in filtered_incidents[:5]: 
+        for inc in filtered_incidents[:5]:
             severity = inc.get("severity", "UNKNOWN")
             emoji = get_severity_emoji(severity)
             status = inc.get("status", "unknown")
             status_icon = "🔥" if status == "confirmed" else "✅"
             
             with st.expander(f"{emoji} {format_timestamp(inc.get('timestamp'))} - {severity}"):
-                # Detection info
                 st.markdown(f"""
                 **Status:** {status_icon} {status.replace("_", " ").title()}
                 
@@ -175,7 +260,6 @@ with list_col:
                 {inc.get("action", "N/A")}
                 """)
                 
-                # Show annotated image
                 if inc.get("annotated_url"):
                     st.image(inc["annotated_url"], caption="Detection Result", use_container_width=True)
     else:
@@ -189,7 +273,6 @@ st.subheader("📈 Analytics")
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
-    # Severity Distribution Pie Chart
     st.markdown("#### Severity Distribution")
     
     severity_data = {
@@ -199,7 +282,6 @@ with chart_col1:
         "LOW": stats.get("low_count", 0)
     }
     
-    # Filter out zeros
     severity_data = {k: v for k, v in severity_data.items() if v > 0}
     
     if severity_data:
@@ -221,11 +303,9 @@ with chart_col1:
         st.info("No data for chart")
 
 with chart_col2:
-    # Incidents Timeline
     st.markdown("#### Incidents Timeline")
     
     if incidents:
-        # Group by date
         df = pd.DataFrame(incidents)
         df["date"] = pd.to_datetime(df["timestamp"], unit="ms").dt.date
         daily_counts = df.groupby("date").size().reset_index(name="count")
@@ -307,7 +387,7 @@ if devices:
     device_cols = st.columns(len(devices))
     
     for idx, (device_id, device) in enumerate(devices.items()):
-        with device_cols[idx]: 
+        with device_cols[idx]:
             status = device.get("status", "unknown")
             status_color = "🟢" if status == "online" else "🔴"
             
@@ -325,4 +405,4 @@ else:
 
 # ============ FOOTER ============
 st.markdown("---")
-st.caption(f"🔥 Wildfire Detection System | Last refreshed: {datetime.now().strftime('%H:%M:%S')} | GDG Hack-O-Verse MVP")
+st.caption(f"🔥 Wildfire Detection System | Last refreshed: {datetime.now().strftime('%I:%M:%S %p IST')} | GDG Hack-O-Verse MVP")

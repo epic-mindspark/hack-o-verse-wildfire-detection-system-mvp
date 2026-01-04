@@ -1,6 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+# IST is UTC+5:30
+IST = timezone(timedelta(hours=5, minutes=30))
 def format_timestamp(timestamp) -> str:
-    """Format millisecond timestamp to readable format"""
+    """Format millisecond timestamp to readable format in IST"""
     if not timestamp:
         return "N/A"
     try:
@@ -8,8 +10,10 @@ def format_timestamp(timestamp) -> str:
             # Convert milliseconds to seconds
             if timestamp > 1e12:
                 timestamp = timestamp / 1000
-            dt = datetime.fromtimestamp(timestamp)
-            return dt.strftime("%b %d, %Y %H:%M:%S")
+            # Create UTC datetime, then convert to IST
+            dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            dt_ist = dt_utc.astimezone(IST)
+            return dt_ist.strftime("%b %d, %Y %I:%M:%S %p IST")
         return str(timestamp)
     except:
         return "N/A"
