@@ -101,41 +101,44 @@ with map_col:
     ]
     
     if valid_incidents:
-        # Use first incident as center, or default to Pune
-        center_lat = valid_incidents[0]["latitude"]
-        center_lng = valid_incidents[0]["longitude"]
-        
-        # Build markers parameter for Google Maps Static/Embed
-        # Using Google Maps Embed API with place
         api_key = st.secrets.get("GOOGLE_MAPS_API_KEY", "")
         
         if api_key:
-            # Create markers string for all incidents
-            markers_param = ""
-            for inc in valid_incidents:
-                severity = inc.get("severity", "UNKNOWN")
-                color_map = {"CRITICAL": "red", "HIGH": "orange", "MEDIUM": "yellow", "LOW": "green"}
-                color = color_map.get(severity, "red")
-                lat = inc.get("latitude")
-                lng = inc.get("longitude")
-                markers_param += f"&markers=color:{color}%7C{lat},{lng}"
+            # Use first incident location
+            latest_incident = valid_incidents[0]
+            lat = latest_incident["latitude"]
+            lng = latest_incident["longitude"]
             
-            # Google Maps Static API URL
-            map_url = f"https://maps.googleapis.com/maps/api/staticmap?center={center_lat},{center_lng}&zoom=13&size=600x400&maptype=terrain{markers_param}&key={api_key}"
+            # Google Maps Embed with place marker
+            embed_url = f"https://www.google.com/maps/embed/v1/place?key={api_key}&q={lat},{lng}&zoom=15&maptype=satellite"
             
-            # Display static map image
-            st.image(map_url, use_container_width=True)
+            # Display embedded map with marker
+            st.markdown(
+                f"""
+                <iframe 
+                    width="100%" 
+                    height="400" 
+                    style="border:0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);" 
+                    loading="lazy" 
+                    allowfullscreen 
+                    referrerpolicy="no-referrer-when-downgrade"
+                    src="{embed_url}">
+                </iframe>
+                """,
+                unsafe_allow_html=True
+            )
             
-            # Add clickable link to open in Google Maps
-            google_maps_link = f"https://www.google.com/maps?q={center_lat},{center_lng}&z=13"
-            st.markdown(f"[🔗 Open in Google Maps]({google_maps_link})")
-            
-            # Legend
-            st.markdown("""
-            **Legend:** 🔴 Critical | 🟠 High | 🟡 Medium | 🟢 Low
-            """)
+            # Incident list below map
+            st.markdown("#### 📍 Incident Locations")
+            for inc in valid_incidents[:5]:
+                sev = inc.get("severity", "UNKNOWN")
+                emoji = get_severity_emoji(sev)
+                inc_lat = inc.get("latitude", 0)
+                inc_lng = inc.get("longitude", 0)
+                maps_link = f"https://www.google.com/maps?q={inc_lat},{inc_lng}&z=15"
+                st.markdown(f"{emoji} **{sev}** - [{inc_lat:.4f}°N, {inc_lng:.4f}°E]({maps_link})")
         else:
-            st.error("⚠️ Google Maps API key not found in secrets!")
+            st.error("⚠️ Google Maps API key not found!")
     else:
         st.info("📍 No incidents with valid coordinates to display")
 
