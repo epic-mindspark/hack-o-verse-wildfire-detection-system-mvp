@@ -1,4 +1,6 @@
-gradio==6.2.0
+gradio>=4.0.0
 ultralytics
+firebase-admin
+google-generativeai
 Pillow
 numpy
