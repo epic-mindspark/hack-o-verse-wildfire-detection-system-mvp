@@ -4,8 +4,8 @@
 
 An AI-powered early wildfire detection and alert system that combines IoT sensors, computer vision, and intelligent analysis to detect wildfires in real-time. 
 
-![Python](https://img.shields.io/badge/Python-76. 5%25-3776AB? style=flat-square&logo=python&logoColor=white)
-![C++](https://img.shields.io/badge/C++-23. 5%25-00599C?style=flat-square&logo=cplusplus&logoColor=white)
+![Python](https://img.shields.io/badge/Python-76.5%25-3776AB?style=flat-square&logo=python&logoColor=white)
+![C++](https://img.shields.io/badge/C++-23.5%25-00599C?style=flat-square&logo=cplusplus&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8-Fire%20Detection-00FFFF?style=flat-square)
 ![Gemini AI](https://img.shields.io/badge/Gemini%20AI-Analysis-8E75B2?style=flat-square&logo=google&logoColor=white)
@@ -185,7 +185,7 @@ hack-o-verse-wildfire-detection-system-mvp/
 
 | Platform | Link | Description |
 |----------|------|-------------|
-| **Streamlit Dashboard** | [Live Dashboard](https://hack-o-verse-wildfire-detection-system-mvp. streamlit.app/) | Real-time monitoring dashboard |
+| **Streamlit Dashboard** | [Live Dashboard](https://hack-o-verse-wildfire-detection-system-mvp.streamlit.app/) | Real-time monitoring dashboard |
 | **Gradio Demo** | [Hugging Face Space](https://huggingface.co/spaces/) | Detection demo interface |
 
 ---
