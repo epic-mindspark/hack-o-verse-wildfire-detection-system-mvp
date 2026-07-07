@@ -1,7 +1,5 @@
 # 🔥 Wildfire Detection System - MVP
 
-> **GDG VIT Pune Hack-O-Verse Hackathon Submission**
-
 An AI-powered early wildfire detection and alert system that combines IoT sensors, computer vision, and intelligent analysis to detect wildfires in real-time. 
 
 ![Python](https://img.shields.io/badge/Python-76.5%25-3776AB?style=flat-square&logo=python&logoColor=white)
